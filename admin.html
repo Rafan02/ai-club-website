@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard — AI Club</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="assets/logo.png">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/admin.css">
+</head>
+<body class="admin-page">
+
+<div class="lock-screen" id="lock-screen">
+  <div class="glass lock-card">
+    <div class="brand-mark" style="margin:0 auto 18px;width:64px;height:64px;border-radius:16px;"><img src="assets/logo.png" alt="AI Club logo"></div>
+    <h2>Admin Access</h2>
+    <p>Enter the admin password to manage the AI Club website.</p>
+    <input type="password" id="lock-input" placeholder="Password" autocomplete="current-password" autofocus>
+    <button class="btn btn-primary btn-block" id="lock-submit">Unlock Dashboard</button>
+    <div class="lock-error" id="lock-error">Incorrect password — try again.</div>
+    <a href="index.html" class="lock-back">← Back to public site</a>
+  </div>
+</div>
+
+<div class="admin-body" id="admin-app" style="display:none;">
+<aside class="admin-sidebar" id="admin-sidebar">
+  <a href="index.html" class="brand">
+    <span class="brand-mark"><img src="assets/logo.png" alt="AI Club logo"></span>
+    <span class="brand-text"><b>AI CLUB</b><span>ADMIN DASHBOARD</span></span>
+  </a>
+  <nav class="sb-nav">
+    <a href="#dashboard" class="sb-link" data-panel="dashboard"><span class="sb-ico">🏠</span>Dashboard</a>
+    <a href="#events" class="sb-link" data-panel="events"><span class="sb-ico">🗓️</span>Events</a>
+    <a href="#projects" class="sb-link" data-panel="projects"><span class="sb-ico">🛠️</span>Projects</a>
+    <a href="#news" class="sb-link" data-panel="news"><span class="sb-ico">📰</span>News</a>
+    <a href="#achievements" class="sb-link" data-panel="achievements"><span class="sb-ico">🏆</span>Achievements</a>
+    <a href="#gallery" class="sb-link" data-panel="gallery"><span class="sb-ico">🖼️</span>Gallery</a>
+    <a href="#team" class="sb-link" data-panel="team"><span class="sb-ico">🧑‍💻</span>Team</a>
+    <a href="#resources" class="sb-link" data-panel="resources"><span class="sb-ico">📘</span>Resources</a>
+    <a href="#faq" class="sb-link" data-panel="faq"><span class="sb-ico">❓</span>FAQ</a>
+    <a href="#settings" class="sb-link" data-panel="settings"><span class="sb-ico">⚙️</span>Settings</a>
+  </nav>
+  <div class="sb-foot">
+    <a href="index.html">← Back to public site</a><br>
+    <a href="#" id="admin-logout">Log out</a><br><br>
+    Changes save automatically to this browser.
+  </div>
+</aside>
+
+<div class="admin-main">
+  <div class="admin-topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button class="admin-menu-toggle" id="admin-menu-toggle" aria-label="Toggle menu">☰</button>
+      <h1 id="admin-title">Dashboard</h1>
+    </div>
+    <a href="index.html" target="_blank">View live site ↗</a>
+  </div>
+  <div class="admin-content">
+    <div class="admin-panel" id="panel-dashboard"></div>
+    <div class="admin-panel" id="panel-events"></div>
+    <div class="admin-panel" id="panel-projects"></div>
+    <div class="admin-panel" id="panel-news"></div>
+    <div class="admin-panel" id="panel-achievements"></div>
+    <div class="admin-panel" id="panel-gallery"></div>
+    <div class="admin-panel" id="panel-team"></div>
+    <div class="admin-panel" id="panel-resources"></div>
+    <div class="admin-panel" id="panel-faq"></div>
+    <div class="admin-panel" id="panel-settings"></div>
+  </div>
+</div>
+</div>
+
+<div class="admin-toast" id="admin-toast"></div>
+
+<script src="js/data.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
+
