@@ -581,11 +581,87 @@ function initAssistant(data, cfg){
   let liveCallsThisSession = 0;
   const MAX_LIVE_CALLS = 15;
 
+  // Build a compact snapshot of live site data to send to the AI so it can
+  // answer questions about real events, news, projects, FAQ, etc.
+  function buildLiveContext(){
+    const lines = [];
+
+    const upcoming = (data.events || [])
+      .filter(e => !isPastDate(e.date))
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 5);
+    if (upcoming.length){
+      lines.push("UPCOMING EVENTS:");
+      upcoming.forEach(e => {
+        const parts = [e.title, formatDate(e.date)];
+        if (e.time) parts.push("at " + e.time);
+        if (e.location) parts.push("at " + e.location);
+        if (e.description) parts.push("— " + e.description);
+        lines.push("- " + parts.join(", "));
+      });
+    } else {
+      lines.push("UPCOMING EVENTS: None scheduled at the moment.");
+    }
+
+    const recentNews = (data.news || [])
+      .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+      .slice(0, 3);
+    if (recentNews.length){
+      lines.push("\nRECENT NEWS:");
+      recentNews.forEach(n => {
+        lines.push("- " + n.title + (n.date ? " (" + formatDate(n.date) + ")" : ""));
+      });
+    }
+
+    const recentAchievements = (data.achievements || []).slice(0, 5);
+    if (recentAchievements.length){
+      lines.push("\nRECENT ACHIEVEMENTS:");
+      recentAchievements.forEach(a => {
+        lines.push("- " + a.title + (a.description ? ": " + a.description : ""));
+      });
+    }
+
+    const projects = (data.projects || []).slice(0, 5);
+    if (projects.length){
+      lines.push("\nCLUB PROJECTS:");
+      projects.forEach(p => {
+        lines.push("- " + p.title + (p.description ? ": " + p.description : ""));
+      });
+    }
+
+    const faqs = (data.faq || []);
+    if (faqs.length){
+      lines.push("\nFAQ:");
+      faqs.forEach(f => lines.push("Q: " + f.q + "\nA: " + f.a));
+    }
+
+    const contact = cfg.contact || {};
+    lines.push("\nCONTACT:");
+    if (contact.email) lines.push("- Email: " + contact.email);
+    if (contact.advisor) lines.push("- Faculty Advisor: " + contact.advisor);
+    if (contact.location) lines.push("- Location: " + contact.location);
+
+    if (cfg.joinUrl) lines.push("\nJOIN LINK: " + cfg.joinUrl);
+
+    const s = data.stats || {};
+    if (s.members || s.projects || s.events || s.awards){
+      lines.push("\nCLUB STATS: " +
+        (s.members ? s.members + " members, " : "") +
+        (s.projects ? s.projects + " projects, " : "") +
+        (s.events ? s.events + " events, " : "") +
+        (s.awards ? s.awards + " awards" : "")
+      );
+    }
+
+    return lines.join("\n");
+  }
+
   async function askLiveAI(question){
+    const liveContext = buildLiveContext();
     const res = await fetch("/api/ask-ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ question, liveContext })
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Request failed");
@@ -595,10 +671,23 @@ function initAssistant(data, cfg){
   async function handleQuestion(question, { preferBuiltIn } = {}){
     addMsg(question, "user");
 
-    // Built-in questions answer instantly and for free, no API call needed.
-    if (preferBuiltIn){
-      const canned = builtInAnswer(question);
-      if (canned){ setTimeout(() => addMsg(canned, "bot"), 200); return; }
+    // For button taps: answer from built-in logic (instant, free, no API).
+    // For typed questions: ALSO try built-in first — if it's a clear match,
+    // answer instantly instead of wasting a Groq call.
+    const canned = builtInAnswer(question);
+    if (preferBuiltIn && canned){ setTimeout(() => addMsg(canned, "bot"), 200); return; }
+
+    // Fuzzy match: if typed question is clearly about something the built-in
+    // handles perfectly (events, join, contact), use the built-in answer.
+    // This avoids Groq calls for simple questions the site data already covers.
+    if (!preferBuiltIn && canned){
+      const q = question.toLowerCase();
+      const clearMatch =
+        q.includes("upcoming") || q.includes("next event") || q.includes("event") ||
+        q.includes("when is") || q.includes("schedule") || q.includes("meeting") ||
+        q.includes("join") || q.includes("register") || q.includes("sign up") ||
+        q.includes("contact") || q.includes("email") || q.includes("advisor");
+      if (clearMatch){ setTimeout(() => addMsg(canned, "bot"), 200); return; }
     }
 
     if (liveCallsThisSession >= MAX_LIVE_CALLS){
@@ -617,7 +706,6 @@ function initAssistant(data, cfg){
       addMsg(answer, "bot");
     } catch (err){
       typingEl.remove();
-      const canned = builtInAnswer(question);
       if (canned){
         addMsg(canned, "bot");
       } else {
