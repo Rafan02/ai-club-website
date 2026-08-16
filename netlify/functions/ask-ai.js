@@ -42,7 +42,7 @@ const GROQ_MODEL = "llama-3.1-8b-instant";
 // You can list more than one origin (e.g. your Netlify subdomain AND a
 // custom domain later).
 const ALLOWED_ORIGINS = [
-  "https://bejewelled-shortbread-d9eaa0.netlify.app"
+  "https://aiclubcesc.netlify.app"
 ];
 
 function corsHeaders(origin){
