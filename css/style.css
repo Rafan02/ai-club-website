@@ -298,7 +298,7 @@ section{ position: relative; z-index:1; padding: 96px 0; }
   .nav-links a{ padding: 13px 8px; border-bottom: 1px solid var(--line); border-radius:0; }
   .nav-toggle{ display:flex; }
   .nav-actions .btn-primary{ display:none; }
-  .nav-links a.nav-join{ display:block; margin-top:10px; text-align:center; background: var(--grad-main); color:#04121c; border-radius:10px; font-weight:700; }
+  .nav-actions .btn{ display:none; }
 }
 
 /* ==========================================================================
