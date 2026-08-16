@@ -489,7 +489,8 @@ function initFactWidget(){
 }
 
 /* ---------------- Ask the AI Club assistant (local, rule-based) ---------------- */
-function initAssistant(data, cfg){
+function initAssistant(siteData, cfg){
+  const data = siteData; // alias kept for buildLiveContext readability
   const fab = document.getElementById("assist-fab");
   const panel = document.getElementById("assist-panel");
   const closeBtn = document.getElementById("assist-close");
@@ -663,9 +664,9 @@ function initAssistant(data, cfg){
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, liveContext })
     });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "Request failed");
-    return data.answer;
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Request failed");
+    return json.answer;
   }
 
   async function handleQuestion(question, { preferBuiltIn } = {}){
