@@ -42,7 +42,8 @@ const GROQ_MODEL = "llama-3.1-8b-instant";
 // You can list more than one origin (e.g. your Netlify subdomain AND a
 // custom domain later).
 const ALLOWED_ORIGINS = [
-  "https://aiclubcesc.netlify.app"
+  "https://aiclubcesc.netlify.app/"
+  // "https://aiclub.yourschool.edu"  <- add a custom domain here later
 ];
 
 function corsHeaders(origin){
@@ -104,10 +105,22 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: "Question is empty." }) };
   }
 
+  // liveContext is a compact snapshot of the site's real data (upcoming events,
+  // recent news, projects, FAQ, contact info) built by the browser from
+  // localStorage and sent here so the AI can answer questions about it.
+  // Cap it to avoid bloating the prompt.
+  const liveContext = (payload.liveContext || "").toString().trim().slice(0, 2000);
+
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey){
     return { statusCode: 500, headers, body: JSON.stringify({ error: "Server isn't configured with an API key yet." }) };
   }
+
+  // Inject live site data into the system prompt so the AI knows real events,
+  // news, achievements, projects, FAQ, and contact info at request time.
+  const fullSystemPrompt = liveContext
+    ? SYSTEM_PROMPT + "\n\n---\nCURRENT LIVE DATA FROM THE WEBSITE (use this to answer questions about events, news, projects, etc.):\n" + liveContext
+    : SYSTEM_PROMPT;
 
   try {
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -121,7 +134,7 @@ exports.handler = async (event) => {
         max_tokens: 220,
         temperature: 0.6,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: fullSystemPrompt },
           { role: "user", content: question }
         ]
       })
