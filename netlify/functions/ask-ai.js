@@ -35,7 +35,7 @@ Facts about the club:
 // smarter (but slower) answers, swap to "llama-3.3-70b-versatile". Check
 // console.groq.com for the current list of available free models — Groq
 // occasionally retires older models.
-const GROQ_MODEL = "llama3-8b-8192";
+const GROQ_MODEL = "llama-3.1-8b-instant";
 
 // ---- 3. CORS allowlist: only your own site is allowed to call this
 // function. Update this after your first deploy (see README/deploy steps).
