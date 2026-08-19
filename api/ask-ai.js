@@ -1,6 +1,6 @@
 /* ==========================================================================
    AI CLUB — "Ask the AI Club" live assistant backend
-   Vercel Serverless Function — Node.js runtime (CommonJS format)
+   Vercel Serverless Function — uses OpenRouter API (free tier)
    ========================================================================== */
 
 const SYSTEM_PROMPT = `You are "Ask the AI Club" — a friendly, concise assistant embedded on the AI Club website for Cantonment English School And College.
@@ -19,7 +19,7 @@ Facts about the club:
 - To join: use the "Join the AI Club" button on the website.
 - Tone: warm, encouraging, like a helpful club member.`;
 
-const GROQ_MODEL = "llama-3.1-8b-instant";
+const MODEL = "meta-llama/llama-3.1-8b-instruct:free";
 const ALLOWED_ORIGINS = ["https://aiclubcesc.vercel.app"];
 
 const recentHits = new Map();
@@ -55,7 +55,7 @@ module.exports = async function handler(req, res) {
   const safeQuestion = question.toString().trim().slice(0, 400);
   const safeContext = (liveContext || "").toString().trim().slice(0, 2000);
 
-  const apiKey = process.env.GROQ_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Server isn't configured with an API key yet." });
 
   const fullSystemPrompt = safeContext
@@ -63,14 +63,16 @@ module.exports = async function handler(req, res) {
     : SYSTEM_PROMPT;
 
   try {
-    const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    const apiRes = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
         "content-type": "application/json",
-        "authorization": "Bearer " + apiKey
+        "authorization": "Bearer " + apiKey,
+        "http-referer": "https://aiclubcesc.vercel.app",
+        "x-title": "AI Club CESC"
       },
       body: JSON.stringify({
-        model: GROQ_MODEL,
+        model: MODEL,
         max_tokens: 220,
         temperature: 0.6,
         messages: [
@@ -80,11 +82,11 @@ module.exports = async function handler(req, res) {
       })
     });
 
-    const data = await groqRes.json();
+    const data = await apiRes.json();
 
-    if (!groqRes.ok) {
-      if (groqRes.status === 429) return res.status(429).json({ error: "The assistant is busy — please try again in a moment." });
-      return res.status(groqRes.status).json({ error: (data.error && data.error.message) || "Groq API error." });
+    if (!apiRes.ok) {
+      if (apiRes.status === 429) return res.status(429).json({ error: "The assistant is busy — please try again in a moment." });
+      return res.status(apiRes.status).json({ error: (data.error && data.error.message) || "API error." });
     }
 
     const answer = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || "").trim();
