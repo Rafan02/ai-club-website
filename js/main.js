@@ -706,6 +706,7 @@ function initAssistant(siteData, cfg){
       typingEl.remove();
       addMsg(answer, "bot");
     } catch (err){
+      console.error("[AI Assistant error]", err);
       typingEl.remove();
       if (canned){
         addMsg(canned, "bot");
