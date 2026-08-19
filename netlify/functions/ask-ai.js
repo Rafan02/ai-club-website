@@ -83,7 +83,8 @@ exports.handler = async (event) => {
   if (event.httpMethod !== "POST"){
     return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
   }
-  // Reject requests from origins we don't recognize (basic anti-abuse).
+  // Only reject if origin is explicitly set AND not in our allowlist.
+  // Empty origin (direct requests, some browsers) is allowed through.
   if (origin && !ALLOWED_ORIGINS.includes(origin)){
     return { statusCode: 403, headers, body: JSON.stringify({ error: "Origin not allowed" }) };
   }
@@ -105,19 +106,19 @@ exports.handler = async (event) => {
     return { statusCode: 400, headers, body: JSON.stringify({ error: "Question is empty." }) };
   }
 
-  // liveContext is a compact snapshot of the site's real data (upcoming events,
-  // recent news, projects, FAQ, contact info) built by the browser from
-  // localStorage and sent here so the AI can answer questions about it.
-  // Cap it to avoid bloating the prompt.
-  const liveContext = (payload.liveContext || "").toString().trim().slice(0, 2000);
+  // liveContext is optional — if it's missing or malformed, just skip it
+  let liveContext = "";
+  try {
+    liveContext = (payload.liveContext || "").toString().trim().slice(0, 2000);
+  } catch {
+    liveContext = "";
+  }
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey){
     return { statusCode: 500, headers, body: JSON.stringify({ error: "Server isn't configured with an API key yet." }) };
   }
 
-  // Inject live site data into the system prompt so the AI knows real events,
-  // news, achievements, projects, FAQ, and contact info at request time.
   const fullSystemPrompt = liveContext
     ? SYSTEM_PROMPT + "\n\n---\nCURRENT LIVE DATA FROM THE WEBSITE (use this to answer questions about events, news, projects, etc.):\n" + liveContext
     : SYSTEM_PROMPT;
