@@ -659,7 +659,7 @@ function initAssistant(siteData, cfg){
 
   async function askLiveAI(question){
     const liveContext = buildLiveContext();
-    const res = await fetch("/.netlify/functions/ask-ai", {
+    const res = await fetch("/api/ask-ai", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, liveContext })
