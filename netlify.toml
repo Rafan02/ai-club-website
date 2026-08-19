@@ -2,8 +2,6 @@
   publish = "."
   functions = "netlify/functions"
 
-# Gives the function a clean URL: /api/ask-ai instead of
-# /.netlify/functions/ask-ai. The website's JS calls /api/ask-ai.
 [[redirects]]
   from = "/api/ask-ai"
   to = "/.netlify/functions/ask-ai"
