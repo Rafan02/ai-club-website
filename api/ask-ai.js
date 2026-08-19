@@ -19,7 +19,7 @@ Facts about the club:
 - To join: use the "Join the AI Club" button on the website.
 - Tone: warm, encouraging, like a helpful club member.`;
 
-const MODEL = "meta-llama/llama-3.1-8b-instruct:free";
+const MODEL = "mistralai/mistral-7b-instruct:free";
 const ALLOWED_ORIGINS = ["https://aiclubcesc.vercel.app"];
 
 const recentHits = new Map();
