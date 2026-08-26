@@ -658,9 +658,16 @@ function initAssistant(siteData, cfg){
     return lines.join("\n");
   }
 
+  function getAskAiEndpoint(){
+    // Same main.js runs on both deployments — pick the right backend by hostname.
+    const host = window.location.hostname;
+    if (host.includes("vercel.app")) return "/api/ask-ai";
+    return "/.netlify/functions/ask-ai";
+  }
+
   async function askLiveAI(question){
     const liveContext = buildLiveContext();
-    const res = await fetch("/.netlify/functions/ask-ai", {
+    const res = await fetch(getAskAiEndpoint(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question, liveContext })
