@@ -17,17 +17,18 @@
 
   function resize(){
     dpr = Math.min(window.devicePixelRatio || 1, 2);
-    w = canvas.clientWidth;
-    h = canvas.clientHeight;
+    const newW = canvas.clientWidth;
+    const newH = canvas.clientHeight;
 
-    // Canvas may not be laid out yet (0 width/height) on first call —
-    // building nodes now would pin every particle at (0,0), clustering
-    // them in the top-left corner. Retry on the next frame instead.
-    if (!w || !h){
-      requestAnimationFrame(resize);
-      return;
-    }
+    // The hero section can briefly report a small (but nonzero) size before
+    // layout, fonts, and the 100svh height fully settle — building nodes off
+    // that reading pins them into a shrunken box in the corner. Require a
+    // sane minimum before treating the size as real; ResizeObserver below
+    // will re-fire with the true size once layout stabilizes.
+    if (!newW || !newH || newW < 100 || newH < 100) return;
 
+    w = newW;
+    h = newH;
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr,0,0,dpr,0,0);
@@ -128,9 +129,32 @@
   canvas.addEventListener("touchmove", onMove, {passive:true});
   canvas.addEventListener("touchend", onLeave);
 
+  // Fires whenever the canvas's actual rendered box changes — including the
+  // first time it settles into its real size, which a one-off call on script
+  // load can miss (see the size guard in resize() above).
+  let hasBuiltOnce = false;
+  function handleResize(){
+    resize();
+    if (reduceMotion && nodes.length && !hasBuiltOnce){
+      hasBuiltOnce = true;
+      step(); // draw the static frame now that we have a real size
+    }
+  }
+  if (typeof ResizeObserver !== "undefined"){
+    new ResizeObserver(handleResize).observe(canvas);
+  } else {
+    // Fallback for older browsers: poll briefly until a real size shows up.
+    let tries = 0;
+    const poll = setInterval(() => {
+      handleResize();
+      tries++;
+      if (nodes.length || tries > 20) clearInterval(poll);
+    }, 100);
+  }
+
   resize();
   if (reduceMotion){
-    step(); // draw one static frame, no animation loop
+    if (nodes.length){ hasBuiltOnce = true; step(); } // draw one static frame if size was already ready
   } else {
     raf = requestAnimationFrame(step);
   }
