@@ -583,6 +583,58 @@ function initAssistant(siteData, cfg){
   let liveCallsThisSession = 0;
   const MAX_LIVE_CALLS = 15;
 
+  // Client-side anti-spam: daily message cap + cooldown between sends.
+  // NOTE: this is client-side only and can be bypassed by editing the JS —
+  // it's meant to stop casual spam/accidental hammering, not determined abuse.
+  const DAILY_LIMIT = 10;
+  const COOLDOWN_MS = 5000;
+  const DAILY_KEY = "aiclub_assist_daily";
+  let cooldownTimer = null;
+
+  function todayStr(){
+    const d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth()+1) + "-" + d.getDate();
+  }
+  function getDailyState(){
+    try {
+      const raw = JSON.parse(localStorage.getItem(DAILY_KEY) || "{}");
+      if (raw.day !== todayStr()) return { day: todayStr(), count: 0 };
+      return raw;
+    } catch(e){ return { day: todayStr(), count: 0 }; }
+  }
+  function bumpDailyCount(){
+    const state = getDailyState();
+    state.count = (state.count||0) + 1;
+    try { localStorage.setItem(DAILY_KEY, JSON.stringify(state)); } catch(e){}
+    return state.count;
+  }
+  function dailyLimitReached(){
+    return getDailyState().count >= DAILY_LIMIT;
+  }
+
+  function setSendLocked(locked){
+    if (sendBtn) sendBtn.disabled = locked;
+    if (input) input.disabled = locked;
+    suggestWrap.querySelectorAll("button").forEach(b => b.disabled = locked);
+  }
+  function startCooldown(){
+    setSendLocked(true);
+    const originalPlaceholder = input ? input.placeholder : "";
+    let remaining = Math.ceil(COOLDOWN_MS/1000);
+    if (input) input.placeholder = `Wait ${remaining}s…`;
+    clearInterval(cooldownTimer);
+    cooldownTimer = setInterval(() => {
+      remaining--;
+      if (remaining <= 0){
+        clearInterval(cooldownTimer);
+        setSendLocked(false);
+        if (input) input.placeholder = originalPlaceholder;
+      } else if (input){
+        input.placeholder = `Wait ${remaining}s…`;
+      }
+    }, 1000);
+  }
+
   // Build a compact snapshot of live site data to send to the AI so it can
   // answer questions about real events, news, projects, FAQ, etc.
   function buildLiveContext(){
@@ -678,13 +730,29 @@ function initAssistant(siteData, cfg){
   }
 
   async function handleQuestion(question, { preferBuiltIn } = {}){
+    // Daily cap applies to every question (button or typed) so the widget
+    // can't be hammered into unlimited live-API calls across a session reload.
+    if (dailyLimitReached()){
+      addMsg(question, "user");
+      addMsg("You've reached today's question limit for the assistant. Please try again tomorrow, or browse the FAQ section.", "bot");
+      return;
+    }
+
     addMsg(question, "user");
+    bumpDailyCount();
+
+    // Lock the input immediately — no new send until this one resolves
+    // (canned or live), then the cooldown takes over.
+    setSendLocked(true);
 
     // For button taps: answer from built-in logic (instant, free, no API).
     // For typed questions: ALSO try built-in first — if it's a clear match,
     // answer instantly instead of wasting a Groq call.
     const canned = builtInAnswer(question);
-    if (preferBuiltIn && canned){ setTimeout(() => addMsg(canned, "bot"), 200); return; }
+    if (preferBuiltIn && canned){
+      setTimeout(() => { addMsg(canned, "bot"); startCooldown(); }, 200);
+      return;
+    }
 
     // Fuzzy match: if typed question is clearly about something the built-in
     // handles perfectly (events, join, contact), use the built-in answer.
@@ -696,16 +764,18 @@ function initAssistant(siteData, cfg){
         q.includes("when is") || q.includes("schedule") || q.includes("meeting") ||
         q.includes("join") || q.includes("register") || q.includes("sign up") ||
         q.includes("contact") || q.includes("email") || q.includes("advisor");
-      if (clearMatch){ setTimeout(() => addMsg(canned, "bot"), 200); return; }
+      if (clearMatch){
+        setTimeout(() => { addMsg(canned, "bot"); startCooldown(); }, 200);
+        return;
+      }
     }
 
     if (liveCallsThisSession >= MAX_LIVE_CALLS){
       addMsg("That's a lot of questions! Try the buttons above, or browse the FAQ section for more.", "bot");
+      startCooldown();
       return;
     }
 
-    if (sendBtn) sendBtn.disabled = true;
-    if (input) input.disabled = true;
     const typingEl = addTyping();
     liveCallsThisSession++;
 
@@ -722,8 +792,7 @@ function initAssistant(siteData, cfg){
         addMsg("Sorry, the live assistant isn't available right now — try one of the buttons above or check the FAQ section.", "error");
       }
     } finally {
-      if (sendBtn) sendBtn.disabled = false;
-      if (input) input.disabled = false;
+      startCooldown();
     }
   }
 
