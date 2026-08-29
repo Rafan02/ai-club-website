@@ -311,7 +311,7 @@ section{ position: relative; z-index:1; padding: 96px 0; }
   padding: var(--nav-h) 0 0;
   overflow: hidden;
 }
-#hero-canvas{ position:absolute; inset:0; z-index:0; opacity:.85; }
+#hero-canvas{ display:none; }
 .hero-fade{
   position:absolute; left:0; right:0; bottom:0; height:220px;
   background: linear-gradient(to bottom, transparent, var(--bg));
@@ -319,25 +319,41 @@ section{ position: relative; z-index:1; padding: 96px 0; }
 }
 .hero-inner{ position:relative; z-index:2; text-align:center; margin:0 auto; padding: 90px 0 70px; }
 
-/* Staggered entrance reveal for the hero content on load */
+/* Staggered entrance reveal for the hero content on load.
+   Driven by a JS-added class (.hero-anim on <body>) rather than firing
+   purely on paint, so it's guaranteed to run once the page is actually
+   ready to be seen — see the script at the bottom of main.js. */
+.hero-kicker, .hero-title, .hero-tagline, .hero-desc, .hero-cta, .hero-scroll{
+  opacity: 0;
+  transform: translateY(34px);
+}
+body.hero-anim .hero-kicker,
+body.hero-anim .hero-title,
+body.hero-anim .hero-tagline,
+body.hero-anim .hero-desc,
+body.hero-anim .hero-cta,
+body.hero-anim .hero-scroll{
+  animation: heroReveal 1s cubic-bezier(.16,1,.3,1) forwards;
+}
 @keyframes heroReveal{
-  from{ opacity:0; transform: translateY(22px); }
+  from{ opacity:0; transform: translateY(34px); }
   to{ opacity:1; transform: translateY(0); }
 }
-.hero-kicker, .hero-title, .hero-tagline, .hero-desc, .hero-cta, .hero-scroll{
-  animation: heroReveal .8s cubic-bezier(.16,1,.3,1) both;
-}
-.hero-kicker{ animation-delay: .05s; }
-.hero-title{ animation-delay: .15s; }
-.hero-tagline{ animation-delay: .3s; }
-.hero-desc{ animation-delay: .4s; }
-.hero-cta{ animation-delay: .5s; }
-.hero-scroll{ animation-delay: .7s; }
+body.hero-anim .hero-kicker{ animation-delay: .05s; }
+body.hero-anim .hero-title{ animation-delay: .18s; }
+body.hero-anim .hero-tagline{ animation-delay: .38s; }
+body.hero-anim .hero-desc{ animation-delay: .52s; }
+body.hero-anim .hero-cta{ animation-delay: .66s; }
+body.hero-anim .hero-scroll{ animation-delay: .85s; }
+
+/* If the animation class never lands (JS error, reduced motion, very old
+   browser), the hero must still be fully visible — never stay hidden. */
 @media (prefers-reduced-motion: reduce){
   .hero-kicker, .hero-title, .hero-tagline, .hero-desc, .hero-cta, .hero-scroll{
-    animation: none;
+    opacity:1; transform:none; animation:none;
   }
 }
+
 
 .hero-kicker{
   display:inline-flex; align-items:center; gap:8px;
