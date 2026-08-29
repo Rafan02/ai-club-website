@@ -925,7 +925,36 @@ function hashHue(str){
   // Adds .hero-anim to <body> to kick off the CSS entrance animation (see
   // style.css). A safety timeout guarantees the hero becomes visible even
   // if this script fails for any reason — it should never stay hidden.
-  function reveal(){ document.body.classList.add("hero-anim"); }
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // Splits the hero title's plain text (e.g. "AI CLUB") into one <span
+  // class="letter"> per character, leaving any nested elements (like the
+  // <small> subtitle) untouched, so CSS can cascade the letters in one by
+  // one. Safe to call more than once — it no-ops after the first run.
+  function splitHeroLetters(){
+    if (reduceMotion) return; // keep plain text — no motion needed
+    const title = document.querySelector(".hero-title");
+    if (!title || title.querySelector(".letter")) return;
+    const textNode = Array.prototype.find.call(
+      title.childNodes,
+      n => n.nodeType === 3 && n.textContent.trim().length
+    );
+    if (!textNode) return;
+    const frag = document.createDocumentFragment();
+    Array.prototype.forEach.call(textNode.textContent, (ch, i) => {
+      const span = document.createElement("span");
+      span.className = "letter";
+      span.style.animationDelay = (0.18 + i * 0.045) + "s";
+      span.textContent = ch === " " ? "\u00A0" : ch;
+      frag.appendChild(span);
+    });
+    title.replaceChild(frag, textNode);
+  }
+
+  function reveal(){
+    splitHeroLetters();
+    document.body.classList.add("hero-anim");
+  }
   if (document.readyState === "loading"){
     document.addEventListener("DOMContentLoaded", reveal);
   } else {
