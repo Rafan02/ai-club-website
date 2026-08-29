@@ -922,10 +922,13 @@ function hashHue(str){
 
 /* ---------------- hero entrance animation trigger ---------------- */
 (function(){
-  // Adds .hero-anim to <body> to kick off the CSS entrance animation (see
-  // style.css). A safety timeout guarantees the hero becomes visible even
-  // if this script fails for any reason — it should never stay hidden.
+  // Sequence: brief logo-pulse intro overlay -> hides -> hero content
+  // cascades in underneath. A safety timeout guarantees everything becomes
+  // visible even if some step fails — nothing should ever stay hidden.
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const intro = document.getElementById("site-intro");
+  let revealed = false;
+  let introHidden = false;
 
   // Splits the hero title's plain text (e.g. "AI CLUB") into one <span
   // class="letter"> per character, leaving any nested elements (like the
@@ -952,13 +955,32 @@ function hashHue(str){
   }
 
   function reveal(){
+    if (revealed) return;
+    revealed = true;
     splitHeroLetters();
     document.body.classList.add("hero-anim");
   }
-  if (document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", reveal);
-  } else {
+
+  function hideIntro(){
+    if (introHidden || !intro) { reveal(); return; }
+    introHidden = true;
+    intro.classList.add("hide");
     reveal();
+    setTimeout(() => intro.remove(), 600); // after the fade transition finishes
   }
-  setTimeout(reveal, 1500); // safety net
+
+  function start(){
+    if (reduceMotion || !intro){
+      hideIntro(); // skip the pulse — go straight to the hero
+    } else {
+      setTimeout(hideIntro, 750); // let the logo pulse briefly first
+    }
+  }
+
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+  setTimeout(hideIntro, 2500); // absolute safety net
 })();
