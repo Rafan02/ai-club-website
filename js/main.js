@@ -919,3 +919,17 @@ function hashHue(str){
   for (let i=0;i<str.length;i++) h = (h*31 + str.charCodeAt(i)) % 360;
   return h;
 }
+
+/* ---------------- hero entrance animation trigger ---------------- */
+(function(){
+  // Adds .hero-anim to <body> to kick off the CSS entrance animation (see
+  // style.css). A safety timeout guarantees the hero becomes visible even
+  // if this script fails for any reason — it should never stay hidden.
+  function reveal(){ document.body.classList.add("hero-anim"); }
+  if (document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", reveal);
+  } else {
+    reveal();
+  }
+  setTimeout(reveal, 1500); // safety net
+})();
