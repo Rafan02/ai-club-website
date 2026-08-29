@@ -19,6 +19,15 @@
     dpr = Math.min(window.devicePixelRatio || 1, 2);
     w = canvas.clientWidth;
     h = canvas.clientHeight;
+
+    // Canvas may not be laid out yet (0 width/height) on first call —
+    // building nodes now would pin every particle at (0,0), clustering
+    // them in the top-left corner. Retry on the next frame instead.
+    if (!w || !h){
+      requestAnimationFrame(resize);
+      return;
+    }
+
     canvas.width = w * dpr;
     canvas.height = h * dpr;
     ctx.setTransform(dpr,0,0,dpr,0,0);
