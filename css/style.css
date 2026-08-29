@@ -334,6 +334,10 @@ body.hero-anim .hero-title{ opacity:1; } /* letters below carry the visible moti
   opacity:0;
   transform: translateY(46px) scale(.82) rotate(-4deg);
   filter: blur(7px);
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 body.hero-anim .hero-title .letter{
   animation: letterIn .68s cubic-bezier(.16,1,.3,1) forwards;
