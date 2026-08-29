@@ -236,6 +236,28 @@ section{ position: relative; z-index:1; padding: 96px 0; }
 /* ==========================================================================
    NAV
    ========================================================================== */
+/* ---------------- site intro (logo pulse before hero reveals) ---------------- */
+.site-intro{
+  position: fixed; inset: 0; z-index: 3000;
+  display:flex; align-items:center; justify-content:center;
+  background: var(--bg);
+  transition: opacity .5s ease, visibility .5s ease;
+}
+.site-intro.hide{ opacity:0; visibility:hidden; pointer-events:none; }
+.site-intro-logo{
+  width: 76px; height: 76px; border-radius:50%;
+  animation: introPulse 1.1s ease-in-out infinite;
+  filter: drop-shadow(0 0 26px rgba(91,127,255,.6));
+}
+@keyframes introPulse{
+  0%,100%{ transform: scale(1); opacity:1; }
+  50%{ transform: scale(1.12); opacity:.72; }
+}
+@media (prefers-reduced-motion: reduce){
+  .site-intro-logo{ animation:none; }
+  .site-intro{ transition:none; }
+}
+
 .nav{
   position: fixed; top:0; left:0; right:0; z-index: 500;
   height: var(--nav-h);
