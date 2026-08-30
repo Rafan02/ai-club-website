@@ -103,7 +103,6 @@ function initFooter(cfg){
   };
   setSocial("social-instagram", cfg.social.instagram);
   setSocial("social-facebook", cfg.social.facebook);
-  setSocial("social-youtube", cfg.social.youtube);
 
   const contactEmail = document.getElementById("contact-email-link");
   if (contactEmail){ contactEmail.href = "mailto:" + cfg.contact.email; contactEmail.textContent = cfg.contact.email; }
@@ -730,8 +729,24 @@ function initAssistant(siteData, cfg){
   }
 
   async function handleQuestion(question, { preferBuiltIn } = {}){
-    // Daily cap applies to every question (button or typed) so the widget
-    // can't be hammered into unlimited live-API calls across a session reload.
+    // Button taps: answer from built-in logic only. Instant, free, no API —
+    // and deliberately NOT subject to the daily limit, send-lock, or
+    // cooldown, since no live call is made.
+    if (preferBuiltIn){
+      const canned = builtInAnswer(question);
+      addMsg(question, "user");
+      if (canned){
+        const typingEl = addTyping();
+        setTimeout(() => { typingEl.remove(); addMsg(canned, "bot"); }, 200);
+      } else {
+        addMsg("Sorry, I don't have a built-in answer for that one — try typing your question instead.", "bot");
+      }
+      return;
+    }
+
+    // Typed questions always go to the live AI — even if the text happens
+    // to match a built-in question — since that's the one path that should
+    // count against the daily limit and trigger the cooldown.
     if (dailyLimitReached()){
       addMsg(question, "user");
       addMsg("You've reached today's question limit for the assistant. Please try again tomorrow, or browse the FAQ section.", "bot");
@@ -741,34 +756,9 @@ function initAssistant(siteData, cfg){
     addMsg(question, "user");
     bumpDailyCount();
 
-    // Lock the input immediately — no new send until this one resolves
-    // (canned or live), then the cooldown takes over.
+    // Lock the input immediately — no new send until this one resolves,
+    // then the cooldown takes over.
     setSendLocked(true);
-
-    // For button taps: answer from built-in logic (instant, free, no API).
-    // For typed questions: ALSO try built-in first — if it's a clear match,
-    // answer instantly instead of wasting a Groq call.
-    const canned = builtInAnswer(question);
-    if (preferBuiltIn && canned){
-      setTimeout(() => { addMsg(canned, "bot"); startCooldown(); }, 200);
-      return;
-    }
-
-    // Fuzzy match: if typed question is clearly about something the built-in
-    // handles perfectly (events, join, contact), use the built-in answer.
-    // This avoids Groq calls for simple questions the site data already covers.
-    if (!preferBuiltIn && canned){
-      const q = question.toLowerCase();
-      const clearMatch =
-        q.includes("upcoming") || q.includes("next event") || q.includes("event") ||
-        q.includes("when is") || q.includes("schedule") || q.includes("meeting") ||
-        q.includes("join") || q.includes("register") || q.includes("sign up") ||
-        q.includes("contact") || q.includes("email") || q.includes("advisor");
-      if (clearMatch){
-        setTimeout(() => { addMsg(canned, "bot"); startCooldown(); }, 200);
-        return;
-      }
-    }
 
     if (liveCallsThisSession >= MAX_LIVE_CALLS){
       addMsg("That's a lot of questions! Try the buttons above, or browse the FAQ section for more.", "bot");
@@ -786,6 +776,7 @@ function initAssistant(siteData, cfg){
     } catch (err){
       console.error("[AI Assistant error]", err);
       typingEl.remove();
+      const canned = builtInAnswer(question);
       if (canned){
         addMsg(canned, "bot");
       } else {
@@ -984,3 +975,12 @@ function hashHue(str){
   }
   setTimeout(hideIntro, 2500); // absolute safety net
 })();
+
+/* ---------------- PWA service worker registration ---------------- */
+if ("serviceWorker" in navigator){
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch((err) => {
+      console.warn("[PWA] Service worker registration failed:", err);
+    });
+  });
+}
