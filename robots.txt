@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /admin_standalone.html
+
+Sitemap: https://aiclubcesc.netlify.app/sitemap.xml
