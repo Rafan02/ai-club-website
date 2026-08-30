@@ -26,7 +26,7 @@
 
   --text-1:      #eef1fb;
   --text-2:      #aab0c9;
-  --text-3:      #6b7290;
+  --text-3:      #7d84a0;
 
   --ok:          #4ee3a3;
   --warn:        #ffb84d;
@@ -487,7 +487,7 @@ body.hero-anim .hero-scroll{ animation-delay: 1.1s; }
   background: rgba(255,255,255,.06); border:1px solid var(--glass-brd);
   margin-bottom:18px;
 }
-.intro-card h3{ position:relative; z-index:1; font-size:1.12rem; font-weight:800; margin-bottom:8px; }
+.intro-card h2{ position:relative; z-index:1; font-size:1.12rem; font-weight:800; margin-bottom:8px; }
 .intro-card p{ position:relative; z-index:1; color: var(--text-2); font-size:.92rem; }
 
 /* ==========================================================================
@@ -693,8 +693,9 @@ body.hero-anim .hero-scroll{ animation-delay: 1.1s; }
 @media (max-width:760px){ .gallery-grid{ columns: 2 160px; } }
 .gallery-item{
   break-inside: avoid; margin-bottom:14px; border-radius: var(--radius-sm);
-  overflow:hidden; cursor:pointer; position:relative; border:1px solid var(--glass-brd);
+  overflow:hidden; position:relative; border:1px solid var(--glass-brd);
 }
+.gallery-btn{ display:block; cursor:pointer; }
 .gallery-item img{ width:100%; display:block; transition: transform .35s ease; }
 .gallery-item:hover img{ transform: scale(1.05); }
 .gallery-cap{
@@ -759,7 +760,7 @@ footer{ position:relative; z-index:1; border-top:1px solid var(--line); padding:
 @media (max-width:800px){ .footer-grid{ grid-template-columns: 1fr 1fr; } }
 @media (max-width:520px){ .footer-grid{ grid-template-columns: 1fr; } }
 .footer-brand p{ color: var(--text-3); font-size:.85rem; margin-top:12px; max-width:280px; }
-.footer-col h5{ font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color: var(--text-3); margin-bottom:14px; font-family: var(--font-mono); }
+.footer-col h3{ font-size:.78rem; text-transform:uppercase; letter-spacing:.05em; color: var(--text-3); margin-bottom:14px; font-family: var(--font-mono); font-weight:700; }
 .footer-col a, .footer-col li{ display:block; font-size:.88rem; color: var(--text-2); margin-bottom:10px; }
 .footer-col a:hover{ color: var(--cyan); }
 .footer-social{ display:flex; gap:10px; margin-top:14px; }
