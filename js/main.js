@@ -203,7 +203,7 @@ function renderOlympiad(oly){
     <div class="tl-step">
       <div class="tl-line" aria-hidden="true"></div>
       <div class="tl-dot">${escapeHTML((r.title||"?").charAt(0))}</div>
-      <h4>${escapeHTML(r.title)}</h4>
+      <h3>${escapeHTML(r.title)}</h3>
       <p>${escapeHTML(r.desc)}</p>
     </div>
   `).join("");
@@ -224,15 +224,15 @@ function renderProjects(list){
     const items = cat === "All" ? list : list.filter(p => p.category === cat);
     if (!items.length){ grid.innerHTML = `<div class="empty-state">No projects in this category yet — check back soon.</div>`; return; }
     grid.innerHTML = items.map(p => `
-      <article class="card proj-card" data-id="${escapeHTML(p.id)}" tabindex="0" role="button" aria-label="View project ${escapeHTML(p.title)}">
-        <div class="proj-thumb">${thumbOrPlaceholder(p.image, p.title)}<span class="proj-status">${escapeHTML(p.status||"")}</span></div>
+      <div class="card proj-card" data-id="${escapeHTML(p.id)}" tabindex="0" role="button" aria-label="View project ${escapeHTML(p.title)}">
+        <div class="proj-thumb">${thumbOrPlaceholder(p.image, p.title, true)}<span class="proj-status">${escapeHTML(p.status||"")}</span></div>
         <div class="proj-body">
           <span class="proj-cat">${escapeHTML(p.category)}</span>
           <h3>${escapeHTML(p.title)}</h3>
           <p>${escapeHTML(truncate(p.description, 90))}</p>
           <div class="proj-tech">${(p.tech||[]).map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join("")}</div>
         </div>
-      </article>
+      </div>
     `).join("");
     markReveal(grid);
     grid.querySelectorAll(".proj-card").forEach(card => {
@@ -256,10 +256,10 @@ function openProjectModal(id){
   if (!p) return;
   const box = document.getElementById("modal-body");
   box.innerHTML = `
-    <div class="modal-media">${thumbOrPlaceholder(p.image, p.title)}</div>
+    <div class="modal-media">${thumbOrPlaceholder(p.image, p.title, true)}</div>
     <div class="modal-content">
       <div class="modal-meta"><span class="tag">${escapeHTML(p.category)}</span><span class="tag">${escapeHTML(p.status||"")}</span></div>
-      <h2>${escapeHTML(p.title)}</h2>
+      <h2 id="modal-title">${escapeHTML(p.title)}</h2>
       <p>${escapeHTML(p.description)}</p>
       ${p.creators ? `<p style="color:var(--cyan);font-family:var(--font-mono);font-size:.85rem;">By ${escapeHTML(p.creators)}</p>` : ""}
       <div class="proj-tech">${(p.tech||[]).map(t=>`<span class="tag">${escapeHTML(t)}</span>`).join("")}</div>
@@ -321,14 +321,14 @@ function renderNews(list){
   const published = list.filter(n => n.status !== "Archived").sort((a,b)=>b.date.localeCompare(a.date));
   if (!published.length){ grid.innerHTML = `<div class="empty-state">No news posted yet.</div>`; return; }
   grid.innerHTML = published.slice(0,6).map(n => `
-    <article class="card news-card" data-id="${escapeHTML(n.id)}" tabindex="0" role="button" aria-label="Read ${escapeHTML(n.title)}">
-      <div class="news-thumb">${thumbOrPlaceholder(n.image, n.title)}</div>
+    <div class="card news-card" data-id="${escapeHTML(n.id)}" tabindex="0" role="button" aria-label="Read ${escapeHTML(n.title)}">
+      <div class="news-thumb">${thumbOrPlaceholder(n.image, n.title, true)}</div>
       <div class="news-body">
         <span class="news-date">${formatDate(n.date)} · ${escapeHTML(n.category)}</span>
         <h3>${escapeHTML(n.title)}</h3>
         <p>${escapeHTML(truncate(n.description, 90))}</p>
       </div>
-    </article>
+    </div>
   `).join("");
   markReveal(grid);
   grid.querySelectorAll(".news-card").forEach(card => {
@@ -342,10 +342,10 @@ function openNewsModal(id){
   if (!n) return;
   const box = document.getElementById("modal-body");
   box.innerHTML = `
-    <div class="modal-media">${thumbOrPlaceholder(n.image, n.title)}</div>
+    <div class="modal-media">${thumbOrPlaceholder(n.image, n.title, true)}</div>
     <div class="modal-content">
       <div class="modal-meta"><span class="tag">${escapeHTML(n.category)}</span><span class="tag">${formatDate(n.date)}</span></div>
-      <h2>${escapeHTML(n.title)}</h2>
+      <h2 id="modal-title">${escapeHTML(n.title)}</h2>
       <p>${escapeHTML(n.article || n.description)}</p>
     </div>`;
   openModal();
@@ -368,8 +368,10 @@ function renderGallery(list){
     GALLERY_FILTERED = items;
     if (!items.length){ grid.innerHTML = `<div class="empty-state">No photos in this album yet.</div>`; return; }
     grid.innerHTML = items.map((g,i) => `
-      <figure class="gallery-item" data-idx="${i}" tabindex="0" role="button" aria-label="View photo: ${escapeHTML(g.caption)}">
-        ${thumbOrPlaceholder(g.image, g.caption, true)}
+      <figure class="gallery-item" data-idx="${i}">
+        <div class="gallery-btn" role="button" tabindex="0" aria-label="View photo: ${escapeHTML(g.caption)}">
+          ${thumbOrPlaceholder(g.image, g.caption, true)}
+        </div>
         <figcaption class="gallery-cap">${escapeHTML(g.caption)}</figcaption>
       </figure>
     `).join("");
@@ -397,8 +399,8 @@ function renderTeam(list){
   if (!list.length){ grid.innerHTML = `<div class="empty-state">Team info coming soon.</div>`; return; }
   grid.innerHTML = list.map(t => `
     <div class="card team-card">
-      <div class="team-avatar">${t.photo ? `<img src="${t.photo}" alt="${escapeHTML(t.name)}">` : initials(t.name)}</div>
-      <h4>${escapeHTML(t.name)}</h4>
+      <div class="team-avatar">${t.photo ? `<img src="${t.photo}" alt="">` : initials(t.name)}</div>
+      <h3>${escapeHTML(t.name)}</h3>
       <div class="role">${escapeHTML(t.position)}</div>
       <p class="bio">${escapeHTML(t.bio)}</p>
       ${t.social ? `<a href="${escapeHTML(t.social)}" target="_blank" rel="noopener" class="btn btn-ghost btn-sm" style="margin-top:12px;">Profile</a>` : ""}
@@ -426,7 +428,7 @@ function renderResources(list){
       const inner = `
         <div>
           <span class="tag" style="margin-bottom:8px;">${escapeHTML(r.category)}</span>
-          <h4>${escapeHTML(r.title)}</h4>
+          <h3>${escapeHTML(r.title)}</h3>
           <p>${escapeHTML(r.description)}</p>
           <div class="hub-meta"><span class="diff-dot">${dots}</span><span style="font-size:.72rem;color:var(--text-3);font-family:var(--font-mono);">${escapeHTML(r.difficulty)}</span></div>
         </div>
@@ -877,9 +879,10 @@ function initials(name){
   const parts = name.trim().split(/\s+/);
   return ((parts[0]||"")[0] + (parts[1] ? parts[1][0] : "")).toUpperCase();
 }
-function thumbOrPlaceholder(src, label){
+function thumbOrPlaceholder(src, label, decorative){
   const finalSrc = src || placeholderDataURI(label);
-  return `<img src="${finalSrc}" alt="${escapeHTML(label||"")}" loading="lazy">`;
+  const altAttr = decorative ? "" : escapeHTML(label||"");
+  return `<img src="${finalSrc}" alt="${altAttr}" loading="lazy">`;
 }
 /** Generates a small SVG-as-data-URI placeholder image (gradient + neural-node motif). No network request needed. */
 function placeholderDataURI(label){
