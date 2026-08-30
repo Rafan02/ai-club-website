@@ -885,7 +885,6 @@ function renderSettingsPanel(){
       <div class="form-grid">
         <label>Instagram<input type="text" id="set-instagram" value="${escapeAttr(cfg.social.instagram)}" placeholder="https://instagram.com/…"></label>
         <label>Facebook<input type="text" id="set-facebook" value="${escapeAttr(cfg.social.facebook)}" placeholder="https://facebook.com/…"></label>
-        <label>YouTube<input type="text" id="set-youtube" value="${escapeAttr(cfg.social.youtube)}" placeholder="https://youtube.com/…"></label>
       </div>
     </div>
     <div class="admin-card">
@@ -919,8 +918,7 @@ function renderSettingsPanel(){
       joinUrl: document.getElementById("set-joinurl").value.trim(),
       social: {
         instagram: document.getElementById("set-instagram").value.trim(),
-        facebook: document.getElementById("set-facebook").value.trim(),
-        youtube: document.getElementById("set-youtube").value.trim()
+        facebook: document.getElementById("set-facebook").value.trim()
       },
       contact: {
         email: document.getElementById("set-email").value.trim(),
