@@ -842,6 +842,10 @@ footer{ position:relative; z-index:1; border-top:1px solid var(--line); padding:
 .assist-live-divider span{ font-family: var(--font-mono); font-size:.65rem; color: var(--text-3); white-space:nowrap; }
 
 .assist-form{ display:flex; gap:8px; padding:14px 18px 18px; flex-shrink:0; }
+.assist-remaining{
+  text-align:center; padding: 0 18px 14px; margin-top:-8px;
+  font-family: var(--font-mono); font-size:.68rem; color: var(--text-3);
+}
 .assist-form input{ flex:1; background: var(--surface-2); border:1px solid var(--glass-brd); border-radius:10px; padding:10px 12px; color: var(--text-1); font-size:.85rem; }
 .assist-form input:disabled{ opacity:.6; }
 .assist-form button{ width:40px; height:40px; border-radius:10px; background: var(--grad-main); border:none; color:#04121c; cursor:pointer; flex-shrink:0; }
