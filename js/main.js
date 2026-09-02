@@ -501,6 +501,7 @@ function initAssistant(siteData, cfg){
   const form = document.getElementById("assist-form");
   const input = document.getElementById("assist-input");
   const sendBtn = form ? form.querySelector("button") : null;
+  const remainingEl = document.getElementById("assist-remaining");
   if (!fab) return;
 
   // Built-in questions — instant, free, work even if the live AI is down.
@@ -607,11 +608,20 @@ function initAssistant(siteData, cfg){
     const state = getDailyState();
     state.count = (state.count||0) + 1;
     try { localStorage.setItem(DAILY_KEY, JSON.stringify(state)); } catch(e){}
+    updateRemainingDisplay();
     return state.count;
   }
   function dailyLimitReached(){
     return getDailyState().count >= DAILY_LIMIT;
   }
+  function updateRemainingDisplay(){
+    if (!remainingEl) return;
+    const left = Math.max(0, DAILY_LIMIT - getDailyState().count);
+    remainingEl.textContent = left > 0
+      ? `${left} question${left === 1 ? "" : "s"} left today`
+      : "Daily question limit reached — resets tomorrow";
+  }
+  updateRemainingDisplay();
 
   function setSendLocked(locked){
     if (sendBtn) sendBtn.disabled = locked;
@@ -718,16 +728,34 @@ function initAssistant(siteData, cfg){
     return "/.netlify/functions/ask-ai";
   }
 
+  async function askLiveAIOnce(question, liveContext){
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    try {
+      const res = await fetch(getAskAiEndpoint(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, liveContext }),
+        signal: controller.signal
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || "Request failed");
+      return json.answer;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
   async function askLiveAI(question){
     const liveContext = buildLiveContext();
-    const res = await fetch(getAskAiEndpoint(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, liveContext })
-    });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || "Request failed");
-    return json.answer;
+    try {
+      return await askLiveAIOnce(question, liveContext);
+    } catch (err){
+      // One quiet retry — smooths over the occasional slow/timed-out
+      // response from the routed free-tier model instead of failing
+      // immediately on a single hiccup.
+      return await askLiveAIOnce(question, liveContext);
+    }
   }
 
   async function handleQuestion(question, { preferBuiltIn } = {}){
@@ -743,6 +771,16 @@ function initAssistant(siteData, cfg){
       } else {
         addMsg("Sorry, I don't have a built-in answer for that one — try typing your question instead.", "bot");
       }
+      return;
+    }
+
+    // Very short/vague input (e.g. "what", "hi") tends to make the model
+    // guess rather than answer meaningfully. Catch it client-side instead
+    // of spending an API call and a daily-limit slot on it.
+    const trimmed = question.trim();
+    if (trimmed.length < 4 || !/[a-zA-Z]{3,}/.test(trimmed)){
+      addMsg(question, "user");
+      addMsg("Could you say a bit more about what you'd like to know? For example, \"How do I join?\" or \"What does the club do?\"", "bot");
       return;
     }
 
