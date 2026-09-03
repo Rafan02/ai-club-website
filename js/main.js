@@ -588,7 +588,7 @@ function initAssistant(siteData, cfg){
   // Client-side anti-spam: daily message cap + cooldown between sends.
   // NOTE: this is client-side only and can be bypassed by editing the JS —
   // it's meant to stop casual spam/accidental hammering, not determined abuse.
-  const DAILY_LIMIT = 10;
+  const DAILY_LIMIT = 20; // matches the server-side per-IP cap in ask-ai.js — that one can't be bypassed
   const COOLDOWN_MS = 5000;
   const DAILY_KEY = "aiclub_assist_daily";
   let cooldownTimer = null;
@@ -728,18 +728,37 @@ function initAssistant(siteData, cfg){
     return "/.netlify/functions/ask-ai";
   }
 
-  async function askLiveAIOnce(question, liveContext){
+  // Session-only conversation history — cleared on refresh, never persisted.
+  // Sent with each live request so the assistant can follow up naturally
+  // ("what about...", "and how do I do that") within one visit.
+  let conversationHistory = [];
+  const MAX_HISTORY_TURNS = 6; // 3 user + 3 assistant messages
+
+  function pushHistory(userText, botText){
+    conversationHistory.push({ role: "user", content: userText });
+    conversationHistory.push({ role: "assistant", content: botText });
+    if (conversationHistory.length > MAX_HISTORY_TURNS){
+      conversationHistory = conversationHistory.slice(-MAX_HISTORY_TURNS);
+    }
+  }
+
+  async function askLiveAIOnce(question, liveContext, history){
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
     try {
       const res = await fetch(getAskAiEndpoint(), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, liveContext }),
+        body: JSON.stringify({ question, liveContext, history }),
         signal: controller.signal
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Request failed");
+      if (!res.ok){
+        const err = new Error(json.error || "Request failed");
+        err.status = res.status;
+        err.limitType = json.limitType;
+        throw err;
+      }
       return json.answer;
     } finally {
       clearTimeout(timeoutId);
@@ -749,12 +768,13 @@ function initAssistant(siteData, cfg){
   async function askLiveAI(question){
     const liveContext = buildLiveContext();
     try {
-      return await askLiveAIOnce(question, liveContext);
+      return await askLiveAIOnce(question, liveContext, conversationHistory);
     } catch (err){
-      // One quiet retry — smooths over the occasional slow/timed-out
-      // response from the routed free-tier model instead of failing
-      // immediately on a single hiccup.
-      return await askLiveAIOnce(question, liveContext);
+      // Retrying a 429 (rate/daily limit) won't help and just wastes another
+      // hit against that same limit — only retry on genuine transient
+      // failures (timeout, network hiccup, 5xx).
+      if (err.status === 429) throw err;
+      return await askLiveAIOnce(question, liveContext, conversationHistory);
     }
   }
 
@@ -767,7 +787,7 @@ function initAssistant(siteData, cfg){
       addMsg(question, "user");
       if (canned){
         const typingEl = addTyping();
-        setTimeout(() => { typingEl.remove(); addMsg(canned, "bot"); }, 200);
+        setTimeout(() => { typingEl.remove(); addMsg(canned, "bot"); pushHistory(question, canned); }, 200);
       } else {
         addMsg("Sorry, I don't have a built-in answer for that one — try typing your question instead.", "bot");
       }
@@ -813,14 +833,22 @@ function initAssistant(siteData, cfg){
       const answer = await askLiveAI(question);
       typingEl.remove();
       addMsg(answer, "bot");
+      pushHistory(question, answer);
     } catch (err){
       console.error("[AI Assistant error]", err);
       typingEl.remove();
-      const canned = builtInAnswer(question);
-      if (canned){
-        addMsg(canned, "bot");
+      if (err.status === 429){
+        // Server-side limit — this is the one that can't be bypassed by
+        // incognito/clearing storage, so give it its own accurate message
+        // rather than the generic "isn't available" fallback.
+        addMsg(err.message || "The assistant has hit its request limit — please try again shortly.", "bot");
       } else {
-        addMsg("Sorry, the live assistant isn't available right now — try one of the buttons above or check the FAQ section.", "error");
+        const canned = builtInAnswer(question);
+        if (canned){
+          addMsg(canned, "bot");
+        } else {
+          addMsg("Sorry, the live assistant isn't available right now — try one of the buttons above or check the FAQ section.", "error");
+        }
       }
     } finally {
       startCooldown();
