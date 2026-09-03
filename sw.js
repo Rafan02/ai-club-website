@@ -7,7 +7,7 @@
    the new versions instead of a stale cached copy.
    ========================================================================== */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_NAME = "aiclub-" + CACHE_VERSION;
 
 const PRECACHE_URLS = [
