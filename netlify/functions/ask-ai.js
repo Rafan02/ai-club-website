@@ -36,6 +36,28 @@ function isRateLimited(ip) {
   return hits.length > MAX_PER_WINDOW;
 }
 
+// Daily cap per IP — this is the one that actually can't be bypassed by
+// incognito/clearing browser storage, unlike a client-side counter, since
+// it's tracked here on the server instead of in the visitor's browser.
+// NOTE: like the per-minute limiter above, this in-memory Map resets if the
+// function instance recycles/cold-starts, and isn't perfectly synced across
+// multiple concurrent instances — good enough for a club-sized site. For a
+// bulletproof version later, swap this Map for Netlify Blobs or a small
+// Upstash Redis free tier (see README).
+const dailyHits = new Map();
+const DAILY_LIMIT_PER_IP = 20;
+
+function todayKey() {
+  const d = new Date();
+  return d.getUTCFullYear() + "-" + (d.getUTCMonth() + 1) + "-" + d.getUTCDate();
+}
+function isDailyLimited(ip) {
+  const key = ip + "|" + todayKey();
+  const count = (dailyHits.get(key) || 0) + 1;
+  dailyHits.set(key, count);
+  return count > DAILY_LIMIT_PER_IP;
+}
+
 exports.handler = async (event, context) => {
   const origin = (event.headers && (event.headers.origin || event.headers.Origin)) || "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -58,14 +80,18 @@ exports.handler = async (event, context) => {
 
   const ip = (event.headers && (event.headers["x-forwarded-for"] || event.headers["X-Forwarded-For"])) || "unknown";
   if (isRateLimited(ip)) {
-    return { statusCode: 429, headers: corsHeaders, body: JSON.stringify({ error: "Too many requests — please wait a moment." }) };
+    return { statusCode: 429, headers: corsHeaders, body: JSON.stringify({ error: "Too many requests — please wait a moment.", limitType: "burst" }) };
+  }
+  if (isDailyLimited(ip)) {
+    return { statusCode: 429, headers: corsHeaders, body: JSON.stringify({ error: "This network has reached its daily question limit for the assistant. Please try again tomorrow.", limitType: "daily" }) };
   }
 
-  let question, liveContext;
+  let question, liveContext, history;
   try {
     const parsed = JSON.parse(event.body || "{}");
     question = parsed.question;
     liveContext = parsed.liveContext;
+    history = parsed.history;
   } catch (e) {
     return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: "Invalid request body." }) };
   }
@@ -76,6 +102,16 @@ exports.handler = async (event, context) => {
 
   const safeQuestion = question.toString().trim().slice(0, 400);
   const safeContext = (liveContext || "").toString().trim().slice(0, 2000);
+
+  // Sanitize conversation history server-side regardless of what the client
+  // sent — cap turn count and per-message length so this can't be abused
+  // to send huge/malformed payloads to the model.
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .slice(-6)
+        .map(m => ({ role: m.role, content: m.content.slice(0, 400) }))
+    : [];
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
@@ -102,6 +138,7 @@ exports.handler = async (event, context) => {
         temperature: 0.6,
         messages: [
           { role: "system", content: fullSystemPrompt },
+          ...safeHistory,
           { role: "user", content: safeQuestion }
         ]
       }),
