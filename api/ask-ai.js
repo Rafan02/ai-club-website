@@ -36,6 +36,24 @@ function isRateLimited(ip) {
   return hits.length > MAX_PER_WINDOW;
 }
 
+// Daily cap per IP — can't be bypassed by incognito/clearing browser storage
+// since it's tracked here on the server, not the visitor's browser.
+// NOTE: in-memory, so it resets on cold start and isn't perfectly synced
+// across concurrent instances — good enough for a club-sized site.
+const dailyHits = new Map();
+const DAILY_LIMIT_PER_IP = 20;
+
+function todayKey() {
+  const d = new Date();
+  return d.getUTCFullYear() + "-" + (d.getUTCMonth() + 1) + "-" + d.getUTCDate();
+}
+function isDailyLimited(ip) {
+  const key = ip + "|" + todayKey();
+  const count = (dailyHits.get(key) || 0) + 1;
+  dailyHits.set(key, count);
+  return count > DAILY_LIMIT_PER_IP;
+}
+
 module.exports = async function handler(req, res) {
   const origin = req.headers.origin || "";
   const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -49,13 +67,24 @@ module.exports = async function handler(req, res) {
   if (origin && !ALLOWED_ORIGINS.includes(origin)) return res.status(403).json({ error: "Origin not allowed" });
 
   const ip = req.headers["x-forwarded-for"] || "unknown";
-  if (isRateLimited(ip)) return res.status(429).json({ error: "Too many requests — please wait a moment." });
+  if (isRateLimited(ip)) return res.status(429).json({ error: "Too many requests — please wait a moment.", limitType: "burst" });
+  if (isDailyLimited(ip)) return res.status(429).json({ error: "This network has reached its daily question limit for the assistant. Please try again tomorrow.", limitType: "daily" });
 
-  const { question, liveContext } = req.body || {};
+  const { question, liveContext, history } = req.body || {};
   if (!question || !question.toString().trim()) return res.status(400).json({ error: "Question is empty." });
 
   const safeQuestion = question.toString().trim().slice(0, 400);
   const safeContext = (liveContext || "").toString().trim().slice(0, 2000);
+
+  // Sanitize conversation history server-side regardless of what the client
+  // sent — cap turn count and per-message length so this can't be abused
+  // to send huge/malformed payloads to the model.
+  const safeHistory = Array.isArray(history)
+    ? history
+        .filter(m => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+        .slice(-6)
+        .map(m => ({ role: m.role, content: m.content.slice(0, 400) }))
+    : [];
 
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "Server isn't configured with an API key yet." });
@@ -82,6 +111,7 @@ module.exports = async function handler(req, res) {
         temperature: 0.6,
         messages: [
           { role: "system", content: fullSystemPrompt },
+          ...safeHistory,
           { role: "user", content: safeQuestion }
         ]
       }),
