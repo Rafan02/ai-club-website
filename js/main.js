@@ -24,6 +24,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderGallery(data.gallery);
   renderTeam(data.team);
   renderResources(data.resources);
+  renderDocs(data.docs);
+  initHubTabs();
   renderFAQ(data.faq);
 
   initFactWidget();
@@ -410,42 +412,147 @@ function renderTeam(list){
 }
 
 /* ---------------- learning hub / resources ---------------- */
+let RESOURCES_CACHE = [];
+let DOCS_CACHE = [];
+
 function renderResources(list){
+  RESOURCES_CACHE = list;
   const grid = document.getElementById("hub-grid");
   const topics = document.getElementById("hub-topics");
+  const search = document.getElementById("hub-search");
   if (!grid) return;
 
   const cats = ["All", ...Array.from(new Set(list.map(r => r.category)))];
   topics.innerHTML = cats.map((c,i) => `<button class="filter-chip ${i===0?'active':''}" data-cat="${escapeHTML(c)}">${escapeHTML(c)}</button>`).join("");
 
   const diffLevel = { "Beginner":1, "Intermediate":2, "Advanced":3 };
-  function paint(cat){
-    const items = cat === "All" ? list : list.filter(r => r.category === cat);
-    if (!items.length){ grid.innerHTML = `<div class="empty-state">No resources in this topic yet.</div>`; return; }
+  let activeCat = "All";
+
+  function paint(){
+    const q = (search.value || "").trim().toLowerCase();
+    let items = activeCat === "All" ? list : list.filter(r => r.category === activeCat);
+    if (q){
+      items = items.filter(r =>
+        (r.title||"").toLowerCase().includes(q) ||
+        (r.description||"").toLowerCase().includes(q) ||
+        (r.category||"").toLowerCase().includes(q)
+      );
+    }
+    if (!items.length){ grid.innerHTML = `<div class="empty-state">No topics match your search.</div>`; return; }
     grid.innerHTML = items.map(r => {
       const lvl = diffLevel[r.difficulty] || 1;
       const dots = [1,2,3].map(n => `<i class="${n<=lvl?'on':''}"></i>`).join("");
-      const inner = `
-        <div>
-          <span class="tag" style="margin-bottom:8px;">${escapeHTML(r.category)}</span>
-          <h3>${escapeHTML(r.title)}</h3>
-          <p>${escapeHTML(r.description)}</p>
-          <div class="hub-meta"><span class="diff-dot">${dots}</span><span style="font-size:.72rem;color:var(--text-3);font-family:var(--font-mono);">${escapeHTML(r.difficulty)}</span></div>
-        </div>
-        <span class="hub-arrow" aria-hidden="true">${r.link ? "&#8599;" : ""}</span>`;
-      return r.link
-        ? `<a class="card hub-item" href="${escapeHTML(r.link)}" target="_blank" rel="noopener">${inner}</a>`
-        : `<div class="card hub-item">${inner}</div>`;
+      return `
+        <div class="card hub-item" data-id="${escapeHTML(r.id)}" tabindex="0" role="button" aria-label="View topic: ${escapeHTML(r.title)}">
+          <div>
+            <span class="tag" style="margin-bottom:8px;">${escapeHTML(r.category)}</span>
+            <h3>${escapeHTML(r.title)}</h3>
+            <div class="hub-meta"><span class="diff-dot">${dots}</span><span style="font-size:.72rem;color:var(--text-3);font-family:var(--font-mono);">${escapeHTML(r.difficulty)}</span></div>
+          </div>
+          <span class="hub-arrow" aria-hidden="true">&#8250;</span>
+        </div>`;
     }).join("");
     markReveal(grid);
+    grid.querySelectorAll(".hub-item").forEach(card => {
+      const open = () => openResourceModal(card.dataset.id);
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+    });
   }
-  paint("All");
+  paint();
   topics.addEventListener("click", (e) => {
     const btn = e.target.closest(".filter-chip");
     if (!btn) return;
     topics.querySelectorAll(".filter-chip").forEach(b=>b.classList.remove("active"));
     btn.classList.add("active");
-    paint(btn.dataset.cat);
+    activeCat = btn.dataset.cat;
+    paint();
+  });
+  search.addEventListener("input", paint);
+}
+
+function openResourceModal(id){
+  const r = RESOURCES_CACHE.find(x => x.id === id);
+  if (!r) return;
+  const box = document.getElementById("modal-body");
+  box.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-meta"><span class="tag">${escapeHTML(r.category)}</span><span class="tag">${escapeHTML(r.difficulty)}</span></div>
+      <h2 id="modal-title">${escapeHTML(r.title)}</h2>
+      <p>${escapeHTML(r.description)}</p>
+      <div class="modal-links">
+        ${r.link ? `<a class="btn btn-primary btn-sm" href="${escapeHTML(r.link)}" target="_blank" rel="noopener">Open resource ↗</a>` : ""}
+      </div>
+    </div>`;
+  openModal();
+}
+
+function renderDocs(list){
+  DOCS_CACHE = list;
+  const grid = document.getElementById("docs-grid");
+  const search = document.getElementById("docs-search");
+  if (!grid) return;
+
+  function paint(){
+    const q = (search.value || "").trim().toLowerCase();
+    let items = list;
+    if (q){
+      items = items.filter(d =>
+        (d.title||"").toLowerCase().includes(q) ||
+        (d.description||"").toLowerCase().includes(q) ||
+        (d.fileType||"").toLowerCase().includes(q)
+      );
+    }
+    if (!items.length){ grid.innerHTML = `<div class="empty-state">No documents match your search.</div>`; return; }
+    grid.innerHTML = items.map(d => `
+      <div class="card hub-item" data-id="${escapeHTML(d.id)}" tabindex="0" role="button" aria-label="View document: ${escapeHTML(d.title)}">
+        <div>
+          <span class="tag" style="margin-bottom:8px;">${escapeHTML(d.fileType || "Doc")}</span>
+          <h3>${escapeHTML(d.title)}</h3>
+        </div>
+        <span class="hub-arrow" aria-hidden="true">&#8250;</span>
+      </div>
+    `).join("");
+    markReveal(grid);
+    grid.querySelectorAll(".hub-item").forEach(card => {
+      const open = () => openDocModal(card.dataset.id);
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); } });
+    });
+  }
+  paint();
+  search.addEventListener("input", paint);
+}
+
+function openDocModal(id){
+  const d = DOCS_CACHE.find(x => x.id === id);
+  if (!d) return;
+  const box = document.getElementById("modal-body");
+  box.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-meta"><span class="tag">${escapeHTML(d.fileType || "Doc")}</span></div>
+      <h2 id="modal-title">${escapeHTML(d.title)}</h2>
+      <p>${escapeHTML(d.description)}</p>
+      <div class="modal-links">
+        ${d.link
+          ? `<a class="btn btn-primary btn-sm" href="${escapeHTML(d.link)}" target="_blank" rel="noopener">Open document ↗</a>`
+          : `<p style="color:var(--text-3);font-size:.82rem;">No link provided yet.</p>`}
+      </div>
+    </div>`;
+  openModal();
+}
+
+function initHubTabs(){
+  const tabs = document.getElementById("hub-tabs");
+  if (!tabs) return;
+  tabs.addEventListener("click", (e) => {
+    const btn = e.target.closest(".hub-tab");
+    if (!btn) return;
+    tabs.querySelectorAll(".hub-tab").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    const target = btn.dataset.hubtab;
+    document.getElementById("hub-pane-topics").hidden = target !== "topics";
+    document.getElementById("hub-pane-docs").hidden = target !== "docs";
   });
 }
 
