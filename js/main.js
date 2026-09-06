@@ -1155,8 +1155,16 @@ function hashHue(str){
 /* ---------------- PWA service worker registration ---------------- */
 if ("serviceWorker" in navigator){
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch((err) => {
-      console.warn("[PWA] Service worker registration failed:", err);
-    });
+    // updateViaCache: "none" stops the browser from serving a stale, HTTP-
+    // cached copy of sw.js itself — without this, an updated service worker
+    // could sit undetected behind the browser's normal HTTP cache for the
+    // file. Combined with skipWaiting()/clients.claim() in sw.js and the
+    // network-first fetch strategy, returning visitors now get the current
+    // deploy immediately instead of a stale cached version.
+    navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
+      .then((reg) => reg.update())
+      .catch((err) => {
+        console.warn("[PWA] Service worker registration failed:", err);
+      });
   });
 }
