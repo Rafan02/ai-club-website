@@ -235,6 +235,10 @@ const DEFAULT_DATA = {
     { id: "res-6", title: "Useful AI Tools for Students", category: "AI Tools", difficulty: "Beginner", description: "A short list of tools students can explore.", link: "", thumbnail: "" }
   ],
 
+  docs: [
+    { id: "doc-1", title: "AI Club Starter Slides", fileType: "PPT", description: "Introductory slide deck covering what the club does and how to get involved.", link: "" }
+  ],
+
   faq: [
     { id: "faq-1", q: "Who can join the AI Club?", a: "Any student of Cantonment English School And College can join." },
     { id: "faq-2", q: "Do I need previous AI experience?", a: "No. The club is designed to help students learn and grow, regardless of starting point." },
