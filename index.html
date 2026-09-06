@@ -333,8 +333,19 @@
       <h2 class="section-title">Learning Hub</h2>
       <p class="section-sub">Curated starting points across AI, Python, and more.</p>
     </div>
-    <div class="hub-topics" id="hub-topics"></div>
-    <div class="hub-grid" id="hub-grid"></div>
+    <div class="hub-tabs" id="hub-tabs">
+      <button class="hub-tab active" data-hubtab="topics">Topics</button>
+      <button class="hub-tab" data-hubtab="docs">Docs</button>
+    </div>
+    <div class="hub-pane" id="hub-pane-topics">
+      <input type="text" class="hub-search" id="hub-search" placeholder="Search topics…" aria-label="Search learning hub topics">
+      <div class="hub-topics" id="hub-topics"></div>
+      <div class="hub-scroll"><div class="hub-grid" id="hub-grid"></div></div>
+    </div>
+    <div class="hub-pane" id="hub-pane-docs" hidden>
+      <input type="text" class="hub-search" id="docs-search" placeholder="Search docs…" aria-label="Search documents">
+      <div class="hub-scroll"><div class="hub-grid" id="docs-grid"></div></div>
+    </div>
   </div>
 </section>
 
