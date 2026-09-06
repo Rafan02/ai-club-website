@@ -4,7 +4,7 @@
    Everything is saved via Store (localStorage) from data.js.
    ========================================================================== */
 
-const PANELS = ["dashboard","events","projects","news","achievements","gallery","team","resources","faq","settings"];
+const PANELS = ["dashboard","events","projects","news","achievements","gallery","team","resources","docs","faq","settings"];
 const AUTH_KEY = "aiclub_admin_unlocked";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,6 +62,7 @@ function initAdminApp(){
   renderGalleryPanel();
   renderTeamPanel();
   renderResourcesPanel();
+  renderDocsPanel();
   renderFaqPanel();
   renderSettingsPanel();
   goTo(location.hash ? location.hash.slice(1) : "dashboard");
@@ -91,6 +92,7 @@ function initSidebar(){
 const PANEL_TITLES = {
   dashboard: "Dashboard", events: "Events", projects: "Projects", news: "News & Announcements",
   achievements: "Achievements", gallery: "Gallery", team: "Team", resources: "Learning Hub Resources",
+  docs: "Learning Hub Docs",
   faq: "FAQ", settings: "Settings"
 };
 function goTo(panel){
@@ -188,6 +190,7 @@ function renderDashboard(){
     gallery: data.gallery.length,
     team: data.team.length,
     resources: data.resources.length,
+    docs: data.docs.length,
     faq: data.faq.length
   };
   el.innerHTML = `
@@ -203,6 +206,7 @@ function renderDashboard(){
       ${dashCard("Gallery Photos", counts.gallery, "gallery")}
       ${dashCard("Team Members", counts.team, "team")}
       ${dashCard("Resources", counts.resources, "resources")}
+      ${dashCard("Docs", counts.docs, "docs")}
       ${dashCard("FAQ Items", counts.faq, "faq")}
     </div>
     <div class="admin-card" style="margin-top:22px;">
@@ -806,6 +810,79 @@ function openResourceForm(id){
     paintResourcesList();
     renderDashboard();
     toast("Resource saved.");
+  });
+}
+
+/* ==========================================================================
+   DOCS (Learning Hub — files/slides/etc. hosted externally, linked here)
+   ========================================================================== */
+function renderDocsPanel(){
+  const el = document.getElementById("panel-docs");
+  el.innerHTML = `
+    <div class="admin-toolbar"><h2>Learning Hub Docs</h2><button class="btn btn-primary btn-sm" id="doc-add-btn">+ Add Doc</button></div>
+    <p class="admin-hint">Docs link out to files hosted elsewhere (Google Drive, Google Slides, etc.) rather than being uploaded here — this site has no file server, so a link keeps things fast and avoids storage limits.</p>
+    <div class="admin-list" id="doc-list"></div>
+    <div class="admin-card" id="doc-form-card" style="display:none;"></div>
+  `;
+  document.getElementById("doc-add-btn").addEventListener("click", () => openDocForm(null));
+  paintDocsList();
+}
+function paintDocsList(){
+  const list = Store.list("docs");
+  const wrap = document.getElementById("doc-list");
+  if (!list.length){ wrap.innerHTML = emptyRow("No docs yet."); return; }
+  wrap.innerHTML = list.map(d => `
+    <div class="admin-row">
+      <div class="ar-thumb"><span>📄</span></div>
+      <div class="ar-info"><b>${escapeHTML(d.title)}</b><span>${escapeHTML(d.fileType||"Doc")}${d.link ? "" : " · no link yet"}</span></div>
+      <div class="ar-actions">
+        <button class="btn btn-ghost btn-sm" data-edit="${d.id}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-del="${d.id}">Delete</button>
+      </div>
+    </div>
+  `).join("");
+  wrap.querySelectorAll("[data-edit]").forEach(b=>b.addEventListener("click",()=>openDocForm(b.dataset.edit)));
+  wrap.querySelectorAll("[data-del]").forEach(b=>b.addEventListener("click",()=>{
+    if (confirm("Delete this doc?")){ Store.remove("docs", b.dataset.del); paintDocsList(); renderDashboard(); toast("Doc deleted."); }
+  }));
+}
+function openDocForm(id){
+  const item = id ? Store.find("docs", id) : { id: Store.newId("doc"), title:"", fileType:"PDF", description:"", link:"" };
+  const card = document.getElementById("doc-form-card");
+  card.style.display = "block";
+  card.innerHTML = `
+    <h3>${id ? "Edit Doc" : "Add Doc"}</h3>
+    <div class="form-grid">
+      <label>Title<input type="text" id="doc-title" value="${escapeAttr(item.title)}"></label>
+      <label>File Type
+        <select id="doc-type">
+          ${["PDF","PPT","DOCX","Sheet","Link","Other"].map(c=>`<option ${item.fileType===c?"selected":""}>${c}</option>`).join("")}
+        </select>
+      </label>
+    </div>
+    <label class="block">Link (Google Drive, Google Slides, etc.)<input type="text" id="doc-link" value="${escapeAttr(item.link)}" placeholder="https://…"></label>
+    <label class="block">Description<textarea id="doc-desc" rows="2">${escapeHTML(item.description)}</textarea></label>
+    <div class="form-actions">
+      <button class="btn btn-primary" id="doc-save">Publish</button>
+      <button class="btn btn-ghost" id="doc-cancel">Cancel</button>
+    </div>
+  `;
+  document.getElementById("doc-cancel").addEventListener("click", ()=>{ card.style.display="none"; });
+  document.getElementById("doc-save").addEventListener("click", () => {
+    const title = document.getElementById("doc-title").value.trim();
+    if (!title){ toast("Please add a title."); return; }
+    const updated = {
+      id: item.id,
+      title,
+      fileType: document.getElementById("doc-type").value,
+      link: document.getElementById("doc-link").value.trim(),
+      description: document.getElementById("doc-desc").value.trim()
+    };
+    Store.upsert("docs", updated);
+    card.style.display = "none";
+    paintDocsList();
+    renderDashboard();
+    toast("Doc saved.");
   });
 }
 
