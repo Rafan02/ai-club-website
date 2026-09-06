@@ -7,7 +7,7 @@
    the new versions instead of a stale cached copy.
    ========================================================================== */
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const CACHE_NAME = "aiclub-" + CACHE_VERSION;
 
 const PRECACHE_URLS = [
@@ -63,21 +63,20 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Stale-while-revalidate: serve from cache instantly if we have it, but
-  // always fetch a fresh copy in the background to keep the cache current.
+  // Network-first: always try to get the live version. Only fall back to
+  // the cache if the request actually fails (visitor is offline) — the
+  // cache exists purely as an offline safety net, never as the default
+  // serving path, so returning visitors always see the current deploy
+  // instead of being permanently one version behind.
   event.respondWith(
-    caches.match(req).then((cached) => {
-      const fetchPromise = fetch(req)
-        .then((networkRes) => {
-          if (networkRes && networkRes.status === 200){
-            const copy = networkRes.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
-          }
-          return networkRes;
-        })
-        .catch(() => cached); // offline — fall back to cache if we have it
-
-      return cached || fetchPromise;
-    })
+    fetch(req)
+      .then((networkRes) => {
+        if (networkRes && networkRes.status === 200){
+          const copy = networkRes.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
+        }
+        return networkRes;
+      })
+      .catch(() => caches.match(req))
   );
 });
