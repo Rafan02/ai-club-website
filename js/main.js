@@ -1158,11 +1158,36 @@ if ("serviceWorker" in navigator){
     // updateViaCache: "none" stops the browser from serving a stale, HTTP-
     // cached copy of sw.js itself — without this, an updated service worker
     // could sit undetected behind the browser's normal HTTP cache for the
-    // file. Combined with skipWaiting()/clients.claim() in sw.js and the
-    // network-first fetch strategy, returning visitors now get the current
-    // deploy immediately instead of a stale cached version.
+    // file.
     navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" })
-      .then((reg) => reg.update())
+      .then((reg) => {
+        // Actively ask the browser to check for a newer sw.js right now,
+        // instead of waiting for its own internal timing.
+        reg.update();
+
+        // If a visitor is still running an OLD service worker from before
+        // this fix, that old worker won't just replace itself — it has to
+        // detect the update, install, and hand off control. The moment
+        // that handoff happens (self.skipWaiting()/clients.claim() in
+        // sw.js), "controllerchange" fires here. Reloading once at that
+        // exact moment means every returning visitor self-heals onto the
+        // current version automatically — no devtools, no manual refresh,
+        // no instructions needed.
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloaded) return;
+          reloaded = true;
+          window.location.reload();
+        });
+
+        // Also re-check whenever the visitor returns to this tab — covers
+        // people who leave a tab open for a long time instead of doing a
+        // fresh page load, which is otherwise the only moment browsers
+        // reliably check for a new service worker.
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") reg.update();
+        });
+      })
       .catch((err) => {
         console.warn("[PWA] Service worker registration failed:", err);
       });
