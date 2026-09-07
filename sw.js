@@ -7,7 +7,7 @@
    the new versions instead of a stale cached copy.
    ========================================================================== */
 
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const CACHE_NAME = "aiclub-" + CACHE_VERSION;
 
 const PRECACHE_URLS = [
@@ -63,13 +63,14 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Network-first: always try to get the live version. Only fall back to
-  // the cache if the request actually fails (visitor is offline) — the
-  // cache exists purely as an offline safety net, never as the default
-  // serving path, so returning visitors always see the current deploy
-  // instead of being permanently one version behind.
+  // Network-first: always try to get the live version. cache: "reload"
+  // forces this past the browser's own HTTP disk cache too — not just our
+  // Cache Storage layer above — so a stale conditionally-cached response
+  // can't slip through either. Only fall back to Cache Storage if the
+  // request actually fails (visitor is offline); it exists purely as an
+  // offline safety net, never as the default serving path.
   event.respondWith(
-    fetch(req)
+    fetch(req, { cache: "reload" })
       .then((networkRes) => {
         if (networkRes && networkRes.status === 200){
           const copy = networkRes.clone();
