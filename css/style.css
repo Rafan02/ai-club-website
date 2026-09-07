@@ -689,7 +689,15 @@ body.hero-anim .hero-scroll{ animation-delay: 1.1s; }
 .hub-search:focus{ outline:none; border-color: var(--cyan); }
 
 .hub-topics{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:26px; justify-content:center; }
-.hub-scroll{ max-height: 560px; overflow-y:auto; padding-right:6px; }
+.hub-scroll{
+  max-height: 560px; overflow-y:auto; padding-right:6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(69,224,255,.4) rgba(255,255,255,.04);
+}
+.hub-scroll::-webkit-scrollbar{ width:8px; }
+.hub-scroll::-webkit-scrollbar-track{ background: rgba(255,255,255,.04); border-radius:8px; }
+.hub-scroll::-webkit-scrollbar-thumb{ background: rgba(69,224,255,.4); border-radius:8px; }
+.hub-scroll::-webkit-scrollbar-thumb:hover{ background: rgba(69,224,255,.65); }
 .hub-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:14px; }
 @media (max-width:760px){ .hub-grid{ grid-template-columns:1fr; } }
 .hub-item{
